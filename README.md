@@ -5,13 +5,12 @@
 MrKaplan is a tool aimed to help red teamers to stay hidden and clear as much as traces possible. It works by saving information such as the time it ran, under which user and "reverting" the computer to look like before MrKaplan ran.<br />
 This tool is inspired by <a href="https://github.com/mufeedvh/moonwalk">MoonWalk</a>, a similar tool for Unix machines.<br />
 You can read more about it in the <a href="https://github.com/idov31/MrKaplan/wiki">wiki</a> page. (COMING SOON)<br /><br />
-**NOTE: This file will probably flagged by your AV as suspicious but it is only due to event clearing activity. It is recommended to run this program within a powershell instance with amsi bypassed.**
 
 ## Features
-- Blocking all types of log creation (EventLog, Sysmon, etc...).
+- Stopping event logging.
 - Clearing files artifacts.
 - Clearing registry artifacts.
-- Clearing powershell history.
+- Can run for multiple users.
 
 ## Usage
 - Before you start your operations on the computer, run MrKaplan with begin flag and whenever your finish run it again with end flag.
