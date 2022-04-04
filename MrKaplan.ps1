@@ -1,9 +1,13 @@
 param (
+    [Parameter(Mandatory=$true)]
     [String]
     $operation,
 
     [String]
     $etwBypassMethod,
+
+    [String]
+    $stompedFilePath,
 
     [String[]]
     $users
@@ -15,6 +19,7 @@ Import-Module .\Modules\Eventlogs.psm1
 Import-Module .\Modules\Utils.psm1
 
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
+$usage = "`n[*] Possible Usage:`n`n[*] Show help message:`n`t.\MrKaplan.ps1 help`n`n[*] For config creation and start:`n`t.\MrKaplan.ps1 begin`n`t.\MrKaplan.ps1 begin -Users Reddington,Liz`n`t.\MrKaplan.ps1 begin -Users Reddington`n`t.\MrKaplan.ps1 begin -EtwBypassMethod overflow`n`n[*] For cleanup:`n`t.\MrKaplan.ps1 end`n`n[*] To save file's timestamps:`n`t.\MrKaplan.ps1 timestomp C:\path\to\file`n`n"
 
 if (Test-Path "banner.txt") {
     $banner = Get-Content -Path "banner.txt" -Raw
@@ -63,7 +68,6 @@ function New-Config {
 
         $configFile["EventLogSettings"] = $etwMetadata[1]
     }
-
     else {
         Write-Host "[-] Unknown ETW patching method, exiting..." -ForegroundColor Red
         return $false
@@ -132,13 +136,15 @@ function Clear-Evidence {
         return $false
     }
 
+    Invoke-StompFiles $configFile["files"]
+
     foreach ($user in $configFile.Keys) {
         if ($user -eq "time" -or $user -eq "EventLogSettings") {
             continue
         }
 
         $users.Add($user)
-        Clear-Files $configFile["time"] $configFile[$user]["PSHistory"] $user 
+        Clear-Files $configFile["time"] $configFile[$user]["PSHistory"] $user
     }
 
     if (!$(Clear-Registry $configFile["time"] $users)) {
@@ -182,10 +188,18 @@ elseif ($operation -eq "end") {
         Write-Host "`n[-] Failed to clear all evidences." -ForegroundColor Red
     }
 }
+elseif ($operation -eq "timestomp") {
+    if (Invoke-LogFileToStomp $stompedFilePath) {
+        Write-Host "`n[+] Saved file's timestamps." -ForegroundColor Green
+    }       
+    else {
+        Write-Host "`n[-] Failed to save timestamps." -ForegroundColor Red
+    }
+}
 elseif ($operation -eq "help") {
-    Write-Host "`n[*] Possible Usage:`n`n[*] Show help message:`n`t.\MrKaplan.ps1 help`n`n[*] For config creation and start:`n`t.\MrKaplan.ps1 begin`n`t.\MrKaplan.ps1 begin -Users Reddington,Liz`n`t.\MrKaplan.ps1 begin -Users Reddington`n`t.\MrKaplan.ps1 begin -EtwBypassMethod overflow`n`n[*] For cleanup:`n`t.\MrKaplan.ps1 end`n`n" -ForegroundColor Blue
+    Write-Host $usage -ForegroundColor Blue
 }
 else {
     Write-Host "`n[!] Invalid Usage!" -ForegroundColor Red
-    Write-Host "`n[*] Possible Usage:`n`n[*] Show help message:`n`t.\MrKaplan.ps1 help`n`n[*] For config creation and start:`n`t.\MrKaplan.ps1 begin`n`t.\MrKaplan.ps1 begin -Users Reddington,Liz`n`t.\MrKaplan.ps1 begin -Users Reddington`n`t.\MrKaplan.ps1 begin -EtwBypassMethod overflow`n`n[*] For cleanup:`n`t.\MrKaplan.ps1 end`n`n" -ForegroundColor Blue
+    Write-Host $usage -ForegroundColor Blue
 }

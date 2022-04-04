@@ -57,4 +57,60 @@ function Clear-Prefetches {
     }
 }
 
+function Invoke-LogFileToStomp {
+    param (
+        [String]
+        $stompedFilePath
+    )
+
+    # Input validation.
+    if (!Test-Path "MrKaplan-Config.json") {
+        Write-Host "[-] Config file doesn't exists, for the first time run this program with start." -ForegroundColor Red
+        return $false
+    }
+
+    if (!$stompedFilePath) {
+        Write-Host "[-] File doesn't exists, for the first time run this program with start." -ForegroundColor Red
+        return $false
+    }
+
+    # Parsing the config file.
+    $configFile = Get-Content "MrKaplan-Config.json" | ConvertFrom-Json | ConvertTo-Hashtable
+    
+    if (!$configFile) {
+        Write-Host "[-] Failed to parse config file." -ForegroundColor Red
+        return $false
+    }
+
+    if (!$configFile["files"]) {
+        $configFile["files"] = @{}   
+    }
+
+    # Saving the time stamps.
+    $stompedFileInfo = Get-Item $stompedFilePath
+    $configFile["files"][$stompedFilePath] = @($stompedFileInfo.CreationTime, $stompedFileInfo.LastAccessTime, $stompedFileInfo.LastWriteTime)
+    $configFile | ConvertTo-Json | Out-File "MrKaplan-Config.json"
+
+    return $true
+}
+
+function Invoke-StompFiles {
+    param (
+        [Hashtable]
+        $files
+    )
+
+    # Stomping every file.
+    if ($files) {
+        foreach ($file in $files.Keys) {
+            $fileInfo = Get-Item $file
+            $fileInfo.CreationTime = $files[$file][0]
+            $fileInfo.LastWriteTime = $files[$file][1]
+            $fileInfo.LastAccessTime = $files[$file][2]
+        }
+    }
+}
+
 Export-ModuleMember -Function Clear-Files
+Export-ModuleMember -Function Invoke-LogFileToStomp
+Export-ModuleMember -Function Invoke-StompFiles
