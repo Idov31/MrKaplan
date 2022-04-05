@@ -100,7 +100,7 @@ function New-Config {
     }
     
     # Saving current time.
-    $configFile["time"] = Get-Date -Format "dddd MM/dd/yyyy HH:mm K"
+    $configFile["time"] = Get-Date
 
     # Saving user data.
     foreach ($user in $users) {

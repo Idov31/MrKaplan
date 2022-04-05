@@ -7,7 +7,7 @@ function Clear-Registry {
         [String[]]
         $users,
 
-        [Switch]
+        [Boolean]
         $runAsUser
     )
     $result = $true
