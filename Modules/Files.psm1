@@ -9,7 +9,7 @@ function Clear-Files {
         [String]
         $user,
 
-        [Switch]
+        [Boolean]
         $runAsUser
     )
     
@@ -69,7 +69,7 @@ function Invoke-LogFileToStomp {
     )
 
     # Input validation.
-    if (!Test-Path "MrKaplan-Config.json") {
+    if (!$(Test-Path "MrKaplan-Config.json")) {
         Write-Host "[-] Config file doesn't exists, for the first time run this program with start." -ForegroundColor Red
         return $false
     }
@@ -93,7 +93,7 @@ function Invoke-LogFileToStomp {
 
     # Saving the time stamps.
     $stompedFileInfo = Get-Item $stompedFilePath
-    $configFile["files"][$stompedFilePath] = @($stompedFileInfo.CreationTime, $stompedFileInfo.LastAccessTime, $stompedFileInfo.LastWriteTime)
+    $configFile["files"][$stompedFilePath] = @($stompedFileInfo.CreationTime, $stompedFileInfo.LastWriteTime, $stompedFileInfo.LastAccessTime)
     $configFile | ConvertTo-Json | Out-File "MrKaplan-Config.json"
 
     return $true
