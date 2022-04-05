@@ -5,10 +5,20 @@ function Clear-Registry {
         $time,
 
         [String[]]
-        $users
+        $users,
+
+        [Switch]
+        $runAsUser
     )
-    
-    return $(Clear-BamKey $time $users)
+    $result = $true
+
+    if (!$runAsUser) {
+        if (!$(Clear-BamKey $time $users)) {
+            $result = $false
+        }
+    }
+
+    return $result
 }
 
 function Clear-BamKey {
