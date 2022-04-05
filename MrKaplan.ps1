@@ -10,7 +10,10 @@ param (
     $stompedFilePath,
 
     [String[]]
-    $users
+    $users,
+
+    [Switch]
+    $runAsUser = $false
 )
 
 Import-Module .\Modules\Registry.psm1
@@ -19,7 +22,7 @@ Import-Module .\Modules\Eventlogs.psm1
 Import-Module .\Modules\Utils.psm1
 
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
-$usage = "`n[*] Possible Usage:`n`n[*] Show help message:`n`t.\MrKaplan.ps1 help`n`n[*] For config creation and start:`n`t.\MrKaplan.ps1 begin`n`t.\MrKaplan.ps1 begin -Users Reddington,Liz`n`t.\MrKaplan.ps1 begin -Users Reddington`n`t.\MrKaplan.ps1 begin -EtwBypassMethod overflow`n`n[*] For cleanup:`n`t.\MrKaplan.ps1 end`n`n[*] To save file's timestamps:`n`t.\MrKaplan.ps1 timestomp C:\path\to\file`n`n"
+$usage = "`n[*] Possible Usage:`n`n[*] Show help message:`n`t.\MrKaplan.ps1 help`n`n[*] For config creation and start:`n`t.\MrKaplan.ps1 begin`n`t.\MrKaplan.ps1 begin -Users Reddington,Liz`n`t.\MrKaplan.ps1 begin -Users Reddington`n`t.\MrKaplan.ps1 begin -EtwBypassMethod overflow`n`t.\MrKaplan.ps1 begin -RunAsUser`n`n[*] For cleanup:`n`t.\MrKaplan.ps1 end`n`n[*] To save file's timestamps:`n`t.\MrKaplan.ps1 timestomp -StompedFilePath C:\path\to\file`n`n"
 
 if (Test-Path "banner.txt") {
     $banner = Get-Content -Path "banner.txt" -Raw
@@ -37,47 +40,60 @@ function New-Config {
     $configFile = @{}
 
     # Stopping the event logging.
-    Write-Host "[*] Stopping event logging..." -ForegroundColor Blue
+    if (!$runAsUser) {
+        $configFile["runAsUser"] = $false
+        Write-Host "[*] Stopping event logging..." -ForegroundColor Blue
 
-    if ($etwBypassMethod -eq "overflow") {
-        Write-Host "[*] This method won't allow any regular user to log in until you end MrKaplan." -ForegroundColor Yellow
+        if ($etwBypassMethod -eq "overflow") {
+            Write-Host "[*] This method won't allow any regular user to log in until you end MrKaplan." -ForegroundColor Yellow
 
-        if ($(Read-Host "Are you sure? [y/n]") -eq "y") {
-            $etwMetadata = Get-EventLogsSettings
+            if ($(Read-Host "Are you sure? [y/n]") -eq "y") {
+                $etwMetadata = Get-EventLogsSettings
+
+                if ($etwMetadata.Count -eq 0) {
+                    return $false
+                }
+                
+                $configFile["EventLogSettings"] = $etwMetadata
+                if (!$(Clear-EventLogging)) {
+                    return $false
+                }
+            }
+            else {
+                Write-Host "[-] Exiting..." -ForegroundColor Red
+                return $false
+            }
+        }
+        elseif ($etwBypassMethod -eq "suspend" -or $etwBypassMethod -eq "") {
+            $etwMetadata = Invoke-SuspendEtw
 
             if ($etwMetadata.Count -eq 0) {
                 return $false
             }
-            
-            $configFile["EventLogSettings"] = $etwMetadata
-            if (!$(Clear-EventLogging)) {
-                return $false
-            }
+
+            $configFile["EventLogSettings"] = $etwMetadata[1]
         }
         else {
-            Write-Host "[-] Exiting..." -ForegroundColor Red
-            return $false
-        }
-    }
-    elseif ($etwBypassMethod -eq "suspend" -or $etwBypassMethod -eq "") {
-        $etwMetadata = Invoke-SuspendEtw
-
-        if ($etwMetadata.Count -eq 0) {
+            Write-Host "[-] Unknown ETW patching method, exiting..." -ForegroundColor Red
             return $false
         }
 
-        $configFile["EventLogSettings"] = $etwMetadata[1]
+        Write-Host "[+] Stopped event logging." -ForegroundColor Green
     }
     else {
-        Write-Host "[-] Unknown ETW patching method, exiting..." -ForegroundColor Red
-        return $false
+        $configFile["runAsUser"] = $true
     }
 
-    Write-Host "[+] Stopped event logging." -ForegroundColor Green
     Write-Host "[*] Creating the config file..." -ForegroundColor Blue
 
     if ($users) {
-        $users.Add($env:USERNAME)
+        if (!$runAsUser) {
+            $users.Add($env:USERNAME)
+        }
+        else {
+            Write-Host "[-] Cannot use both run as user and users!" -ForegroundColor Red
+            return $false
+        }
     }
     else {
         $users = @($env:USERNAME)
@@ -130,6 +146,7 @@ function Clear-Evidence {
     # Running the modules on each user.
     Write-Host "[*] Cleaning logs..." -ForegroundColor Blue
     $users = New-Object Collections.Generic.List[String]
+    $runAsUser = $configFile["runAsUser"]
 
     if (!$($configFile.Contains("time"))) {
         Write-Host "[-] Invalid config file structure." -ForegroundColor Red
@@ -144,21 +161,23 @@ function Clear-Evidence {
         }
 
         $users.Add($user)
-        Clear-Files $configFile["time"] $configFile[$user]["PSHistory"] $user
+        Clear-Files $configFile["time"] $configFile[$user]["PSHistory"] $user $runAsUser
     }
 
-    if (!$(Clear-Registry $configFile["time"] $users)) {
+    if (!$(Clear-Registry $configFile["time"] $users $runAsUser)) {
         Write-Host "[-] Failed to cleanup the registry." -ForegroundColor Red
         $result = $false
     }
 
     # Restoring the event logging.
-    Write-Host "[*] Restoring event logging..." -ForegroundColor Blue
+    if (!$runAsUser) {
+        Write-Host "[*] Restoring event logging..." -ForegroundColor Blue
 
-    if ($configFile.Contains("EventLogSettings")) {
-        if (!$(Invoke-RestoreEtw $configFile["EventLogSettings"])) {
-            Write-Host "[-] Failed to restore the eventlogging." -ForegroundColor Red
-            $result = $false
+        if ($configFile.Contains("EventLogSettings")) {
+            if (!$(Invoke-RestoreEtw $configFile["EventLogSettings"])) {
+                Write-Host "[-] Failed to restore the eventlogging." -ForegroundColor Red
+                $result = $false
+            }
         }
     }
     

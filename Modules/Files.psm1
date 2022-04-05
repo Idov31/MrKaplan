@@ -7,10 +7,15 @@ function Clear-Files {
         $encodedPowershellHistory,
 
         [String]
-        $user
+        $user,
+
+        [Switch]
+        $runAsUser
     )
     
-    Clear-Prefetches $time
+    if (!$runAsUser) {
+        Clear-Prefetches $time
+    }
     Clear-Powershell $encodedPowershellHistory $user
 }
 
