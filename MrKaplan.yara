@@ -12,13 +12,13 @@ rule MrKaplanStandalone {
     strings:
         $imports1 = /[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(.*) | Invoke-Expression/i nocase
         $imports2 = /[System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(.*) | iex/i nocase
-        
+
         $s1 = "MrKaplan.ps1" ascii nocase
         $s2 = "Clear-Evidence" ascii nocase
         $s3 = "EventLogSettings" ascii nocase
         $s4 = "runAsUser" ascii nocase
         $s5 = "PSHistory" ascii nocase
-        $s6 = "C:\Users\$($user)\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt" ascii nocase
+        $s6 = "C:\\Users\\$($user)\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\PSReadLine\\ConsoleHost_history.txt" ascii nocase
         $s7 = "MrKaplan-Config.json" ascii nocase
         $s8 = "Invoke-StompFiles" ascii nocase
         $s9 = "Clear-Files" ascii nocase
@@ -38,14 +38,14 @@ rule MrKaplan {
         date = "2022-04-15"
 
     strings:
-        $imports1 = "Import-Module .\Modules\Registry.psm1" ascii nocase
-        $imports2 = "Import-Module .\Modules\Files.psm1" ascii nocase
-        $imports3 = "Import-Module .\Modules\Eventlogs.psm1" ascii nocase
-        $imports4 = "Import-Module .\Modules\Utils.psm1" ascii nocase
-        $imports5 = "ipmo .\Modules\Registry.psm1" ascii nocase
-        $imports6 = "ipmo .\Modules\Files.psm1" ascii nocase
-        $imports7 = "ipmo .\Modules\Eventlogs.psm1" ascii nocase
-        $imports8 = "ipmo .\Modules\Utils.psm1" ascii nocase
+        $imports1 = "Import-Module .\\Modules\\Registry.psm1" ascii nocase
+        $imports2 = "Import-Module .\\Modules\\Files.psm1" ascii nocase
+        $imports3 = "Import-Module .\\Modules\\Eventlogs.psm1" ascii nocase
+        $imports4 = "Import-Module .\\Modules\\Utils.psm1" ascii nocase
+        $imports5 = "ipmo .\\Modules\\Registry.psm1" ascii nocase
+        $imports6 = "ipmo .\\Modules\\Files.psm1" ascii nocase
+        $imports7 = "ipmo .\\Modules\\Eventlogs.psm1" ascii nocase
+        $imports8 = "ipmo .\\Modules\\Utils.psm1" ascii nocase
         
 
         $s1 = "MrKaplan.ps1" ascii nocase
@@ -53,7 +53,7 @@ rule MrKaplan {
         $s3 = "EventLogSettings" ascii nocase
         $s4 = "runAsUser" ascii nocase
         $s5 = "PSHistory" ascii nocase
-        $s6 = "C:\Users\$($user)\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt" ascii nocase
+        $s6 = "C:\\Users\\$($user)\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\PSReadLine\\ConsoleHost_history.txt" ascii nocase
         $s7 = "MrKaplan-Config.json" ascii nocase
         $s8 = "Invoke-StompFiles" ascii nocase
         $s9 = "Clear-Files" ascii nocase
