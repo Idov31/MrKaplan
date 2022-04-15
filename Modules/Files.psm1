@@ -12,11 +12,19 @@ function Clear-Files {
         [Boolean]
         $runAsUser
     )
-    
-    if (!$runAsUser) {
-        Clear-Prefetches $time
-    }
+    $res = $true
     Clear-Powershell $encodedPowershellHistory $user
+    Clear-InetCache $time $user
+    Clear-WindowsHistory $time $user
+    Clear-OfficeHistory $time $user
+
+    if (!$runAsUser) {
+        if ($(Clear-Prefetches $time) -eq $false) {
+            $res = $false
+        }
+    }
+
+    return $res
 }
 
 function Clear-Powershell {
@@ -59,6 +67,98 @@ function Clear-Prefetches {
     }
     else {
         Write-Host "[-] Couldn't remove prefetch artifacts, rerun as admin or delete manually." -ForegroundColor Yellow
+        return $false
+    }
+
+    return $true
+}
+
+function Clear-InetCache {
+    param (
+        [DateTime]
+        $time,
+
+        [String]
+        $user
+    )
+
+    $inetCache = Get-ChildItem "C:\Users\${$user}\AppData\Local\Microsoft\Windows\INetCache" -Force -Recurse -File
+
+    if ($inetCache) {
+
+        # Iterating inet cache.
+        foreach ($inet in $inetCache) {
+            if ($inet.Name -eq "container.dat") {
+                continue
+            }
+            $delta = $inet.CreationTime - $time
+            
+            # If the inet cache file created within the range of the wanted timespan. - remove it.
+            if ($delta -gt 0) {
+                Remove-Item $inet.FullName
+            }
+        }
+
+        Write-Host "[+] Removed inet cache artifacts!" -ForegroundColor Green
+    }
+}
+
+function Clear-OfficeHistory {
+    param (
+        [DateTime]
+        $time,
+
+        [String]
+        $user
+    )
+
+    $officeHistory = Get-ChildItem "C:\Users\$($user)\AppData\Roaming\Microsoft\Office\Recent"
+
+    if ($officeHistory) {
+
+        # Iterating office history.
+        foreach ($file in $officeHistory) {
+
+            if ($file.Name -eq "index.dat") {
+                continue
+            }
+
+            $delta = $file.CreationTime - $time
+            
+            # If the office history file created within the range of the wanted timespan. - remove it.
+            if ($delta -gt 0) {
+                Remove-Item $file.FullName
+            }
+        }
+
+        Write-Host "[+] Removed office history artifacts!" -ForegroundColor Green
+    }
+}
+
+function Clear-WindowsHistory {
+    param (
+        [DateTime]
+        $time,
+
+        [String]
+        $user
+    )
+
+    $windowsHistory = Get-ChildItem "C:\Users\$($user)\AppData\Roaming\Microsoft\Windows\Recent" -File
+
+    if ($windowsHistory) {
+
+        # Iterating windows history.
+        foreach ($file in $windowsHistory) {
+            $delta = $file.CreationTime - $time
+            
+            # If the windows history file created within the range of the wanted timespan. - remove it.
+            if ($delta -gt 0) {
+                Remove-Item $file.FullName
+            }
+        }
+
+        Write-Host "[+] Removed windows history artifacts!" -ForegroundColor Green
     }
 }
 
