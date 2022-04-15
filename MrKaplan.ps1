@@ -161,7 +161,11 @@ function Clear-Evidence {
         }
 
         $users.Add($user)
-        Clear-Files $configFile["time"] $configFile[$user]["PSHistory"] $user $runAsUser
+        
+        if ($(Clear-Files $configFile["time"] $configFile[$user]["PSHistory"] $user $runAsUser) -eq $false) {
+            Write-Host "[-] Failed to clean files for $($user)." -ForegroundColor Red
+            $result = $false
+        }
     }
 
     if (!$(Clear-Registry $configFile["time"] $users $runAsUser)) {
