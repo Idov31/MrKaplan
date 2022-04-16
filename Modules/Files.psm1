@@ -17,6 +17,7 @@ function Clear-Files {
     Clear-InetCache $time $user
     Clear-WindowsHistory $time $user
     Clear-OfficeHistory $time $user
+    Clear-CryptNetUrlCache $time $user
 
     if (!$runAsUser) {
         if ($(Clear-Prefetches $time) -eq $false) {
@@ -144,7 +145,7 @@ function Clear-WindowsHistory {
         $user
     )
 
-    $windowsHistory = Get-ChildItem "C:\Users\$($user)\AppData\Roaming\Microsoft\Windows\Recent" -File
+    $windowsHistory = Get-ChildItem "C:\Users\$($user)\AppData\Roaming\Microsoft\Windows\Recent" -File -Recurse
 
     if ($windowsHistory) {
 
@@ -159,6 +160,33 @@ function Clear-WindowsHistory {
         }
 
         Write-Host "[+] Removed windows history artifacts!" -ForegroundColor Green
+    }
+}
+
+function Clear-CryptNetUrlCache {
+    param (
+        [DateTime]
+        $time,
+
+        [String]
+        $user
+    )
+
+    $cryptNetUrlCache = Get-ChildItem "C:\Users\$($user)\AppData\LocalLow\Microsoft\CryptnetUrlCache" -File -Recurse
+
+    if ($cryptNetUrlCache) {
+
+        # Iterating cryptnet url cache.
+        foreach ($file in $cryptNetUrlCache) {
+            $delta = $file.CreationTime - $time
+            
+            # If the cryptnet url cache file created within the range of the wanted timespan. - remove it.
+            if ($delta -gt 0) {
+                Remove-Item $file.FullName
+            }
+        }
+
+        Write-Host "[+] Removed cryptnet url cache artifacts!" -ForegroundColor Green
     }
 }
 
