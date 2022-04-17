@@ -101,20 +101,28 @@ function Clear-InetCache {
         $user
     )
 
-    $inetCache = Get-ChildItem "C:\Users\${$user}\AppData\Local\Microsoft\Windows\INetCache" -Force -Recurse -File
+    $inetCacheFolders = Get-ChildItem "C:\Users\$($user)\AppData\Local\Microsoft\Windows\INetCache" -Force -Directory
 
-    if ($inetCache) {
+    if ($inetCacheFolders) {
 
-        # Iterating inet cache.
-        foreach ($inet in $inetCache) {
-            if ($inet.Name -eq "container.dat") {
+        foreach ($inetCacheFolder in $inetCacheFolders) {
+
+            if ($inetCacheFolder.Name -eq "Content.IE5") {
                 continue
             }
-            $delta = $inet.CreationTime - $time
-            
-            # If the inet cache file created within the range of the wanted timespan. - remove it.
-            if ($delta -gt 0) {
-                Remove-Item $inet.FullName
+            $inetCache = Get-ChildItem $inetCacheFolder.FullName -Recurse -Force -File
+
+            # Iterating inet cache.
+            foreach ($inet in $inetCache) {
+                if ($inet.Name -eq "container.dat") {
+                    continue
+                }
+                $delta = $inet.CreationTime - $time
+                
+                # If the inet cache file created within the range of the wanted timespan. - remove it.
+                if ($delta -gt 0) {
+                    Remove-Item $inet.FullName -Force
+                }
             }
         }
 
@@ -131,7 +139,13 @@ function Clear-OfficeHistory {
         $user
     )
 
-    $officeHistory = Get-ChildItem "C:\Users\$($user)\AppData\Roaming\Microsoft\Office\Recent"
+    $officeHistoryPath = "C:\Users\$($user)\AppData\Roaming\Microsoft\Office\Recent"
+
+    if (-not $(Test-Path $officeHistoryPath)) {
+        return
+    }
+    
+    $officeHistory = Get-ChildItem $officeHistoryPath
 
     if ($officeHistory) {
 
@@ -190,7 +204,7 @@ function Clear-CryptNetUrlCache {
         $user
     )
 
-    $cryptNetUrlCache = Get-ChildItem "C:\Users\$($user)\AppData\LocalLow\Microsoft\CryptnetUrlCache" -File -Recurse
+    $cryptNetUrlCache = Get-ChildItem "C:\Users\$($user)\AppData\LocalLow\Microsoft\CryptnetUrlCache" -File -Recurse -Force
 
     if ($cryptNetUrlCache) {
 
@@ -200,7 +214,7 @@ function Clear-CryptNetUrlCache {
             
             # If the cryptnet url cache file created within the range of the wanted timespan. - remove it.
             if ($delta -gt 0) {
-                Remove-Item $file.FullName
+                Remove-Item $file.FullName -Force
             }
         }
 

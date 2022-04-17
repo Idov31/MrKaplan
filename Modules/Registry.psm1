@@ -103,7 +103,7 @@ function Clear-UserAssist {
                     continue
                 }
 
-                $rawTimestamp = $userAssistKey.GetValue($valueName)
+                $rawTimestamp = $currentUserAssistKey.GetValue($valueName)
 
                 # To cover the Windows 7 and Windows 7 and onwards versions.
                 if ($rawTimestamp.Length -gt 68) {
