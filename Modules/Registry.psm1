@@ -8,12 +8,18 @@ function Clear-Registry {
         $users,
 
         [Boolean]
-        $runAsUser
+        $runAsUser,
+        
+        [String[]]
+        $exclusions
     )
     $result = $true
-    Clear-UserAssist $time $users
 
-    if (!$runAsUser) {
+    if (-not $exclusions.Contains("userassist")) {
+        Clear-UserAssist $time $users
+    }
+
+    if (!$runAsUser -and -not $exclusions.Contains("bamkey")) {
         if (!$(Clear-BamKey $time $users)) {
             $result = $false
         }
