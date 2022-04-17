@@ -12,6 +12,9 @@ param (
     [String[]]
     $users,
 
+    [String[]]
+    $exclusions,
+
     [Switch]
     $runAsUser = $false
 )
@@ -22,7 +25,7 @@ Import-Module .\Modules\Eventlogs.psm1
 Import-Module .\Modules\Utils.psm1
 
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
-$usage = "`n[*] Possible Usage:`n`n[*] Show help message:`n`t.\MrKaplan.ps1 help`n`n[*] For config creation and start:`n`t.\MrKaplan.ps1 begin`n`t.\MrKaplan.ps1 begin -Users Reddington,Liz`n`t.\MrKaplan.ps1 begin -Users Reddington`n`t.\MrKaplan.ps1 begin -EtwBypassMethod overflow`n`t.\MrKaplan.ps1 begin -RunAsUser`n`n[*] For cleanup:`n`t.\MrKaplan.ps1 end`n`n[*] To save file's timestamps:`n`t.\MrKaplan.ps1 timestomp -StompedFilePath C:\path\to\file`n`n"
+$usage = "`n[*] Possible Usage:`n`n[*] Show help message:`n`t.\MrKaplan.ps1 help`n`n[*] For config creation and start:`n`t.\MrKaplan.ps1 begin`n`t.\MrKaplan.ps1 begin -Users Reddington,Liz`n`t.\MrKaplan.ps1 begin -Users Reddington`n`t.\MrKaplan.ps1 begin -EtwBypassMethod overflow`n`t.\MrKaplan.ps1 begin -RunAsUser`n`t.\MrKaplan.ps1 begin Exclusions BamKey, OfficeHistory`n`n[*] For cleanup:`n`t.\MrKaplan.ps1 end`n`n[*] To save file's timestamps:`n`t.\MrKaplan.ps1 timestomp -StompedFilePath C:\path\to\file`n`n"
 
 if (Test-Path "banner.txt") {
     $banner = Get-Content -Path "banner.txt" -Raw
@@ -35,12 +38,19 @@ function New-Config {
         $users,
 
         [String]
-        $etwBypassMethod
+        $etwBypassMethod,
+
+        [String[]]
+        $exclusions
     )
     $configFile = @{}
 
+    if (-not $exclusions) {
+        $exclusions = @()
+    }
+
     # Stopping the event logging.
-    if (!$runAsUser) {
+    if (!$runAsUser -and -not $exclusions.Contains("eventlogs")) {
         $configFile["runAsUser"] = $false
         Write-Host "[*] Stopping event logging..." -ForegroundColor Blue
 
@@ -104,13 +114,18 @@ function New-Config {
 
     # Saving user data.
     foreach ($user in $users) {
-        $powershellHistoryFile = "C:\Users\$($user)\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt"
-
-        if (Test-Path $powershellHistoryFile) {
-            $powershellHistory = [Convert]::ToBase64String([IO.File]::ReadAllBytes($powershellHistoryFile))
+        if ($exclusions.Contains("pshistory")) {
+            $powershellHistory = ""
         }
         else {
-            $powershellHistory = ""
+            $powershellHistoryFile = "C:\Users\$($user)\AppData\Roaming\Microsoft\Windows\PowerShell\PSReadLine\ConsoleHost_history.txt"
+
+            if (Test-Path $powershellHistoryFile) {
+                $powershellHistory = [Convert]::ToBase64String([IO.File]::ReadAllBytes($powershellHistoryFile))
+            }
+            else {
+                $powershellHistory = ""
+            }
         }
 
         $configFile[$user] = @{}
@@ -123,6 +138,7 @@ function New-Config {
         return $false
     }
 
+    $configFile["Exclusions"] = $exclusions
     $configFile | ConvertTo-Json | Out-File "MrKaplan-Config.json"    
     return $true
 }
@@ -156,25 +172,25 @@ function Clear-Evidence {
     Invoke-StompFiles $configFile["files"]
 
     foreach ($user in $configFile.Keys) {
-        if ($user -eq "time" -or $user -eq "EventLogSettings") {
+        if ($user -eq "time" -or $user -eq "EventLogSettings" -or $user -eq "Exclusions") {
             continue
         }
 
         $users.Add($user)
         
-        if ($(Clear-Files $configFile["time"] $configFile[$user]["PSHistory"] $user $runAsUser) -eq $false) {
+        if ($(Clear-Files $configFile["time"] $configFile[$user]["PSHistory"] $user $runAsUser $configFile["Exclusions"]) -eq $false) {
             Write-Host "[-] Failed to clean files for $($user)." -ForegroundColor Red
             $result = $false
         }
     }
 
-    if (!$(Clear-Registry $configFile["time"] $users $runAsUser)) {
+    if (!$(Clear-Registry $configFile["time"] $users $runAsUser $configFile["Exclusions"])) {
         Write-Host "[-] Failed to cleanup the registry." -ForegroundColor Red
         $result = $false
     }
 
     # Restoring the event logging.
-    if (!$runAsUser) {
+    if (!$runAsUser -and -not $configFile["Exclusions"].Contains("eventlogs")) {
         Write-Host "[*] Restoring event logging..." -ForegroundColor Blue
 
         if ($configFile.Contains("EventLogSettings")) {
@@ -196,13 +212,18 @@ function Clear-Evidence {
 }
 
 if ($operation -eq "begin") {
-    if (New-Config $users $etwBypassMethod) {
+    for ($i = 0; $i -lt $exclusions.Count; $i++) { 
+        $exclusions[$i] = $exclusions[$i].ToLower() 
+    }
+
+    if (New-Config $users $etwBypassMethod $exclusions) {
         Write-Host "`n[+] Saved required information!`n[+] You can do your operations." -ForegroundColor Green
     }
     else {
         Write-Host "`n[-] Failed to create config file." -ForegroundColor Red
     }
 }
+
 elseif ($operation -eq "end") {
     if (Clear-Evidence) {
         Write-Host "`n[+] All evidences cleared!" -ForegroundColor Green
@@ -211,6 +232,7 @@ elseif ($operation -eq "end") {
         Write-Host "`n[-] Failed to clear all evidences." -ForegroundColor Red
     }
 }
+
 elseif ($operation -eq "timestomp") {
     if (Invoke-LogFileToStomp $stompedFilePath) {
         Write-Host "`n[+] Saved file's timestamps." -ForegroundColor Green
@@ -219,9 +241,11 @@ elseif ($operation -eq "timestomp") {
         Write-Host "`n[-] Failed to save timestamps." -ForegroundColor Red
     }
 }
+
 elseif ($operation -eq "help") {
     Write-Host $usage -ForegroundColor Blue
 }
+
 else {
     Write-Host "`n[!] Invalid Usage!" -ForegroundColor Red
     Write-Host $usage -ForegroundColor Blue

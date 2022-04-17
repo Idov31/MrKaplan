@@ -10,16 +10,34 @@ function Clear-Files {
         $user,
 
         [Boolean]
-        $runAsUser
+        $runAsUser,
+
+        [String[]]
+        $exclusions
     )
     $res = $true
-    Clear-Powershell $encodedPowershellHistory $user
-    Clear-InetCache $time $user
-    Clear-WindowsHistory $time $user
-    Clear-OfficeHistory $time $user
-    Clear-CryptNetUrlCache $time $user
 
-    if (!$runAsUser) {
+    if (-not $exclusions.Contains("pshistory")) {
+        Clear-Powershell $encodedPowershellHistory $user
+    }
+    
+    if (-not $exclusions.Contains("inetcache")) {
+        Clear-InetCache $time $user
+    }
+
+    if (-not $exclusions.Contains("windowshistory")) {
+        Clear-WindowsHistory $time $user
+    }
+
+    if (-not $exclusions.Contains("officehistory")) {
+        Clear-OfficeHistory $time $user
+    }
+    
+    if (-not $exclusions.Contains("cryptnetcache")) {
+        Clear-CryptNetUrlCache $time $user
+    }
+
+    if (!$runAsUser -and -not $exclusions.Contains("prefetch")) {
         if ($(Clear-Prefetches $time) -eq $false) {
             $res = $false
         }
