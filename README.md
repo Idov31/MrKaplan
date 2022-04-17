@@ -16,6 +16,7 @@ You can read more about it in the [wiki](https://github.com/idov31/MrKaplan/wiki
 - Can run for multiple users.
 - Can run as user and as admin (Highly recommended to run as admin).
 - Can save timestamps of files.
+- Can exclude certian operations and leave artifacts to blue teams.
 
 ## Usage
 

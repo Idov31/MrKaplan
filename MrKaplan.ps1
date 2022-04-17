@@ -25,7 +25,7 @@ Import-Module .\Modules\Eventlogs.psm1
 Import-Module .\Modules\Utils.psm1
 
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
-$usage = "`n[*] Possible Usage:`n`n[*] Show help message:`n`t.\MrKaplan.ps1 help`n`n[*] For config creation and start:`n`t.\MrKaplan.ps1 begin`n`t.\MrKaplan.ps1 begin -Users Reddington,Liz`n`t.\MrKaplan.ps1 begin -Users Reddington`n`t.\MrKaplan.ps1 begin -EtwBypassMethod overflow`n`t.\MrKaplan.ps1 begin -RunAsUser`n`t.\MrKaplan.ps1 begin Exclusions BamKey, OfficeHistory`n`n[*] For cleanup:`n`t.\MrKaplan.ps1 end`n`n[*] To save file's timestamps:`n`t.\MrKaplan.ps1 timestomp -StompedFilePath C:\path\to\file`n`n"
+$usage = "`n[*] Possible Usage:`n`n[*] Show help message:`n`t.\MrKaplan.ps1 help`n`n[*] For config creation and start:`n`t.\MrKaplan.ps1 begin`n`t.\MrKaplan.ps1 begin -Users Reddington,Liz`n`t.\MrKaplan.ps1 begin -Users Reddington`n`t.\MrKaplan.ps1 begin -EtwBypassMethod overflow`n`t.\MrKaplan.ps1 begin -RunAsUser`n`t.\MrKaplan.ps1 begin -Exclusions BamKey, OfficeHistory`n`n[*] For cleanup:`n`t.\MrKaplan.ps1 end`n`n[*] To save file's timestamps:`n`t.\MrKaplan.ps1 timestomp -StompedFilePath C:\path\to\file`n`n"
 
 if (Test-Path "banner.txt") {
     $banner = Get-Content -Path "banner.txt" -Raw
@@ -110,7 +110,7 @@ function New-Config {
     }
     
     # Saving current time.
-    $configFile["time"] = Get-Date
+    $configFile["time"] = $(Get-Date).DateTime
 
     # Saving user data.
     foreach ($user in $users) {
@@ -172,7 +172,7 @@ function Clear-Evidence {
     Invoke-StompFiles $configFile["files"]
 
     foreach ($user in $configFile.Keys) {
-        if ($user -eq "time" -or $user -eq "EventLogSettings" -or $user -eq "Exclusions") {
+        if ($user -eq "time" -or $user -eq "EventLogSettings" -or $user -eq "Exclusions" -or $user -eq "runAsUser") {
             continue
         }
 
