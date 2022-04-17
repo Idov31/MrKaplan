@@ -16,6 +16,7 @@ You can read more about it in the [wiki](https://github.com/idov31/MrKaplan/wiki
 - Can run for multiple users.
 - Can run as user and as admin (Highly recommended to run as admin).
 - Can save timestamps of files.
+- Can exclude certian operations and leave artifacts to blue teams.
 
 ## Usage
 
@@ -23,11 +24,23 @@ You can read more about it in the [wiki](https://github.com/idov31/MrKaplan/wiki
 - ***DO NOT REMOVE MrKaplan-Config.json file until you rerun with the end flag***, otherwise MrKaplan will not be able to use the information.
 <img src="Pictures/usage.png" />
 
+## IOCs
+
+- Powershell process that access to the artifacts mentioned in the wiki page.
+
+- Powershell importing weird base64 blob.
+
+- Powershell process that performs Token Manipulation.
+
+- MrKaplan's config and the YARA rule.
+
 ## Acknowledgements
 
 - [PowerSploit](https://github.com/PowerShellMafia/PowerSploit)
 
 - [Phant0m](https://github.com/hlldz/Phant0m)
+
+- [ForensicArtifacts](https://github.com/ForensicArtifacts/artifacts/blob/main/data/windows.yaml)
 
 ## Disclaimer
 
