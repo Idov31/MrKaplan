@@ -4,7 +4,7 @@
 
 ## Description
 
-MrKaplan is a tool aimed to help red teamers to stay hidden and clear as much as traces possible. It works by saving information such as the time it ran, under which user and "reverting" the computer to look like before MrKaplan ran.<br />
+MrKaplan is a tool aimed to help red teamers to stay hidden by clearing evidence of execution. It works by saving information such as the time it ran, snapshot of files and associate each evidence to the related user.<br />
 This tool is inspired by [MoonWalk](https://github.com/mufeedvh/moonwalk), a similar tool for Unix machines.<br />
 You can read more about it in the [wiki](https://github.com/idov31/MrKaplan/wiki) page.<br /><br />
 
