@@ -11,7 +11,10 @@ function Clear-Registry {
         $runAsUser,
         
         [String[]]
-        $exclusions
+        $exclusions,
+
+        [Hashtable]
+        $appCompatData
     )
     $result = $true
 
@@ -20,8 +23,15 @@ function Clear-Registry {
     }
 
     if (!$runAsUser -and -not $exclusions.Contains("bamkey")) {
-        if (!$(Clear-BamKey $time $users)) {
-            $result = $false
+
+        if (-not $exclusions.Contains("bamkey")) {
+            if (!$(Clear-BamKey $time $users)) {
+                $result = $false
+            }
+        }
+
+        if (-not $exclusions.Contains("appcompatcache")) {
+            Clear-AppCompatCache $appCompatData
         }
     }
 
@@ -122,6 +132,19 @@ function Clear-UserAssist {
         }
     }
     Write-Host "[+] Removed user assist artifacts!" -ForegroundColor Green
+}
+
+function Clear-AppCompatCache {
+    param (
+        [Hashtable]
+        $appCompatData
+    )
+
+    if (Test-Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache") {
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache" -Name "AppCompatCache" -Value $([System.Convert]::FromBase64String($appCompatData["AppCompatCache"])) -Force
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache" -Name "CacheMainSdb" -Value $([System.Convert]::FromBase64String($appCompatData["CacheMainSdb"])) -Force
+        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache" -Name "SdbTime" -Value $([System.Convert]::FromBase64String($appCompatData["SdbTime"])) -Force
+    }
 }
 
 Export-ModuleMember -Function Clear-Registry

