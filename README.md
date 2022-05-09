@@ -1,12 +1,14 @@
 # Mr.Kaplan
 
-![image](https://img.shields.io/badge/powershell-5391FE?style=for-the-badge&logo=powershell&logoColor=white) ![image](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)<br />
+![image](https://img.shields.io/badge/powershell-5391FE?style=for-the-badge&logo=powershell&logoColor=white) ![image](https://img.shields.io/badge/Windows-0078D6?style=for-the-badge&logo=windows&logoColor=white)
 
 ## Description
 
-MrKaplan is a tool aimed to help red teamers to stay hidden by clearing evidence of execution. It works by saving information such as the time it ran, snapshot of files and associate each evidence to the related user.<br />
-This tool is inspired by [MoonWalk](https://github.com/mufeedvh/moonwalk), a similar tool for Unix machines.<br />
-You can read more about it in the [wiki](https://github.com/idov31/MrKaplan/wiki) page.<br /><br />
+MrKaplan is a tool aimed to help red teamers to stay hidden by clearing evidence of execution. It works by saving information such as the time it ran, snapshot of files and associate each evidence to the related user.
+
+This tool is inspired by [MoonWalk](https://github.com/mufeedvh/moonwalk), a similar tool for Unix machines.
+
+You can read more about it in the [wiki](https://github.com/idov31/MrKaplan/wiki) page.
 
 ## Features
 
@@ -32,7 +34,7 @@ You can read more about it in the [wiki](https://github.com/idov31/MrKaplan/wiki
 
 - Powershell process that performs Token Manipulation.
 
-- MrKaplan's config and the YARA rule.
+- MrKaplan's registry key: HKCU:\Software\MrKaplan.
 
 ## Acknowledgements
 
