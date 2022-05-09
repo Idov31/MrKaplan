@@ -44,7 +44,7 @@ function New-Config {
         [String[]]
         $exclusions
     )
-
+    New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS
     
     if (Test-Path $rootKeyPath) {
         Write-Host "[-] Config already exists, please delete the current and rerun." -ForegroundColor Red
@@ -73,7 +73,6 @@ function New-Config {
                     if ($etwMetadata.Count -eq 0) {
                         return $false
                     }
-                    
                     
                     if (!$(Clear-EventLogging)) {
                         return $false
@@ -120,8 +119,6 @@ function New-Config {
         
     }
 
-    Write-Host "[*] Creating the config file..." -ForegroundColor Blue
-
     if ($users) {
         if (!$runAsUser) {
             $users.Add($env:USERNAME)
@@ -137,9 +134,10 @@ function New-Config {
     
     # Saving current time.
     New-ItemProperty -Path $rootKeyPath -Name "Time" -Value $(Get-Date).DateTime
-    
 
     # Saving user data.
+    $comDlg32Path = "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32"
+
     foreach ($user in $users) {
 
         if ($exclusions.Contains("pshistory")) {
@@ -155,11 +153,18 @@ function New-Config {
                 $powershellHistory = ""
             }
         }
-        
+
         New-Item -Path "$($rootKeyPath)\Users" -Name $user
         New-ItemProperty -Path "$($rootKeyPath)\Users\$($user)" -Name "PSHistory" -Value $powershellHistory
-        
-        
+
+        if (-not $exclusions.Contains("comdlg32")) {
+            $sid = $(New-Object System.Security.Principal.NTAccount($user)).Translate([System.Security.Principal.SecurityIdentifier]).Value
+            
+            if (!(Test-Path "HKU:\$($sid)\$($comDlg32Path)")) {
+                continue
+            }
+            Copy-Item "HKU:\$($sid)\$($comDlg32Path)" -Destination "$($rootKeyPath)\Users\$($user)\ComDlg32" -Force -Recurse
+        }
     }
 
     New-ItemProperty -Path $rootKeyPath -Name "Exclusions" -Value $exclusions
@@ -203,7 +208,7 @@ function Clear-Evidence {
         }
     }
 
-    if (!$(Clear-Registry $time $users $runAsUser $exclusions "$($rootKeyPath)\AppCompatCache")) {
+    if (!$(Clear-Registry $time $users $runAsUser $exclusions $rootKeyPath)) {
         Write-Host "[-] Failed to cleanup the registry." -ForegroundColor Red
         $result = $false
     }

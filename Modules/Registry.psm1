@@ -14,7 +14,7 @@ function Clear-Registry {
         $exclusions,
 
         [String]
-        $appCompatDataPath
+        $rootKeyPath
     )
     $result = $true
 
@@ -22,7 +22,11 @@ function Clear-Registry {
         Clear-UserAssist $time $users
     }
 
-    if (!$runAsUser -and -not $exclusions.Contains("bamkey")) {
+    if (-not $exclusions.Contains("comdlg32")) {
+        Clear-ComDlg32 $rootKeyPath $users
+    }
+
+    if (!$runAsUser) {
 
         if (-not $exclusions.Contains("bamkey")) {
             if (!$(Clear-BamKey $time $users)) {
@@ -31,7 +35,7 @@ function Clear-Registry {
         }
 
         if (-not $exclusions.Contains("appcompatcache")) {
-            Clear-AppCompatCache $appCompatDataPath
+            Clear-AppCompatCache "$($rootKeyPath)\AppCompatCache"
         }
     }
 
@@ -143,4 +147,28 @@ function Clear-AppCompatCache {
     Write-Host "[+] Removed AppCompatCache artifacts!" -ForegroundColor Green
 }
 
+function Clear-ComDlg32 {
+    param (
+        [String]
+        $rootKeyPath,
+
+        [String[]]
+        $users
+    )
+    New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS
+    $comDlg32Path = "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32"
+
+    foreach ($user in $users) {
+        $sid = $(New-Object System.Security.Principal.NTAccount($user)).Translate([System.Security.Principal.SecurityIdentifier]).Value
+
+        # Checking if the user has user assist key.
+        if (!(Test-Path "HKU:\$($sid)\$($comDlg32Path)")) {
+            continue
+        }
+
+        Copy-Item "$($rootKeyPath)\Users\$($user)\ComDlg32" -Destination "HKU:\$($sid)\$($comDlg32Path)" -Force -Recurse
+    }
+
+    Write-Host "[+] Removed ComDlg32 artifacts!" -ForegroundColor Green
+}
 Export-ModuleMember -Function Clear-Registry
