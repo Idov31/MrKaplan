@@ -19,7 +19,7 @@ rule MrKaplanStandalone {
         $s4 = "runAsUser" ascii nocase
         $s5 = "PSHistory" ascii nocase
         $s6 = "C:\\Users\\$($user)\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\PSReadLine\\ConsoleHost_history.txt" ascii nocase
-        $s7 = "MrKaplan-Config.json" ascii nocase
+        $s7 = "HKCU:\Software\MrKaplan" ascii nocase
         $s8 = "Invoke-StompFiles" ascii nocase
         $s9 = "Clear-Files" ascii nocase
         $s10 = "Clear-Registry" ascii nocase
@@ -54,7 +54,7 @@ rule MrKaplan {
         $s4 = "runAsUser" ascii nocase
         $s5 = "PSHistory" ascii nocase
         $s6 = "C:\\Users\\$($user)\\AppData\\Roaming\\Microsoft\\Windows\\PowerShell\\PSReadLine\\ConsoleHost_history.txt" ascii nocase
-        $s7 = "MrKaplan-Config.json" ascii nocase
+        $s7 = "HKCU:\Software\MrKaplan" ascii nocase
         $s8 = "Invoke-StompFiles" ascii nocase
         $s9 = "Clear-Files" ascii nocase
         $s10 = "Clear-Registry" ascii nocase
