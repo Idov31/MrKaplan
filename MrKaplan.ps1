@@ -24,6 +24,7 @@ Import-Module .\Modules\Files.psm1
 Import-Module .\Modules\Eventlogs.psm1
 Import-Module .\Modules\Utils.psm1
 
+$rootKeyPath = "HKCU:\Software\MrKaplan"
 $PSDefaultParameterValues['*:Encoding'] = 'utf8'
 $usage = "`n[*] Possible Usage:`n`n[*] Show help message:`n`t.\MrKaplan.ps1 help`n`n[*] For config creation and start:`n`t.\MrKaplan.ps1 begin`n`t.\MrKaplan.ps1 begin -Users Reddington,Liz`n`t.\MrKaplan.ps1 begin -Users Reddington`n`t.\MrKaplan.ps1 begin -EtwBypassMethod overflow`n`t.\MrKaplan.ps1 begin -RunAsUser`n`t.\MrKaplan.ps1 begin -Exclusions BamKey, OfficeHistory`n`n[*] For cleanup:`n`t.\MrKaplan.ps1 end`n`n[*] To save file's timestamps:`n`t.\MrKaplan.ps1 timestomp -StompedFilePath C:\path\to\file`n`n"
 
@@ -43,7 +44,14 @@ function New-Config {
         [String[]]
         $exclusions
     )
-    $configFile = @{}
+
+    
+    if (Test-Path $rootKeyPath) {
+        Write-Host "[-] Config already exists, please delete the current and rerun." -ForegroundColor Red
+        return $false
+    }
+    New-Item -Path $rootKeyPath
+    New-Item -Path $rootKeyPath -Name "Users"
 
     if (-not $exclusions) {
         $exclusions = @()
@@ -51,7 +59,7 @@ function New-Config {
 
     # Stopping the event logging.
     if (-not $runAsUser) {
-        $configFile["runAsUser"] = $false
+        New-ItemProperty -Path $rootKeyPath -Name "RunAsUser" -PropertyType "DWord" -Value $false
 
         if (-not $exclusions.Contains("eventlogs")) {
             Write-Host "[*] Stopping event logging..." -ForegroundColor Blue
@@ -66,9 +74,14 @@ function New-Config {
                         return $false
                     }
                     
-                    $configFile["EventLogSettings"] = $etwMetadata
+                    
                     if (!$(Clear-EventLogging)) {
                         return $false
+                    }
+
+                    New-Item -Path $rootKeyPath -Name "EventLogSettings"
+                    foreach ($setting in $etwMetadata.GetEnumerator()) {
+                        New-ItemProperty -Path "$($rootKeyPath)\EventLogSettings" -Name $setting.Name -Value $setting.Value
                     }
                 }
                 else {
@@ -82,8 +95,12 @@ function New-Config {
                 if ($etwMetadata.Count -eq 0) {
                     return $false
                 }
-
-                $configFile["EventLogSettings"] = $etwMetadata[1]
+                
+                New-Item -Path $rootKeyPath -Name "EventLogSettings"
+                foreach ($setting in $etwMetadata[1].GetEnumerator()) {
+                    New-ItemProperty -Path "$($rootKeyPath)\EventLogSettings" -Name $setting.Name -Value $setting.Value
+                }
+                
             }
             else {
                 Write-Host "[-] Unknown ETW patching method, exiting..." -ForegroundColor Red
@@ -92,17 +109,15 @@ function New-Config {
 
             Write-Host "[+] Stopped event logging." -ForegroundColor Green
         }
-        $configFile["AppCompatCache"] = @{}
+        
 
         if (-not $exclusions.Contains("appcompatcache")) {
-            $appCompatCacheKey = Get-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache"
-            $configFile["AppCompatCache"]["AppCompatCache"] = [System.Convert]::ToBase64String($appCompatCacheKey.AppCompatCache)
-            $configFile["AppCompatCache"]["CacheMainSdb"] = [System.Convert]::ToBase64String($appCompatCacheKey.CacheMainSdb)
-            $configFile["AppCompatCache"]["SdbTime"] = [System.Convert]::ToBase64String($appCompatCacheKey.SdbTime)
+            Copy-Item "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache" -Destination "$($rootKeyPath)\AppCompatCache" -Force -Recurse
         }
     }
     else {
-        $configFile["runAsUser"] = $true
+        New-ItemProperty -Path $rootKeyPath -Name "RunAsUser" -Value $true
+        
     }
 
     Write-Host "[*] Creating the config file..." -ForegroundColor Blue
@@ -121,10 +136,12 @@ function New-Config {
     }
     
     # Saving current time.
-    $configFile["time"] = $(Get-Date).DateTime
+    New-ItemProperty -Path $rootKeyPath -Name "Time" -Value $(Get-Date).DateTime
+    
 
     # Saving user data.
     foreach ($user in $users) {
+
         if ($exclusions.Contains("pshistory")) {
             $powershellHistory = ""
         }
@@ -138,74 +155,72 @@ function New-Config {
                 $powershellHistory = ""
             }
         }
-
-        $configFile[$user] = @{}
-        $configFile[$user]["PSHistory"] = $powershellHistory
+        
+        New-Item -Path "$($rootKeyPath)\Users" -Name $user
+        New-ItemProperty -Path "$($rootKeyPath)\Users\$($user)" -Name "PSHistory" -Value $powershellHistory
+        
+        
     }
 
-    # Dumping the data to json file.
-    if (Test-Path "MrKaplan-Config.json") {
-        Write-Host "[-] Config file already exists, please delete the current and rerun." -ForegroundColor Red
-        return $false
-    }
-
-    $configFile["Exclusions"] = $exclusions
-    $configFile | ConvertTo-Json | Out-File "MrKaplan-Config.json"    
+    New-ItemProperty -Path $rootKeyPath -Name "Exclusions" -Value $exclusions
+      
     return $true
 }
 
 function Clear-Evidence {
     $result = $true
 
-    if (!(Test-Path "MrKaplan-Config.json")) {
-        Write-Host "[-] Failed to find config file, re-run the program with begin command." -ForegroundColor Red
-        return $false
-    }
-
-    # Parsing the config file.
-    $configFile = Get-Content "MrKaplan-Config.json" | ConvertFrom-Json | ConvertTo-Hashtable
-    
-    if (!$configFile) {
-        Write-Host "[-] Failed to parse config file." -ForegroundColor Red
+    # Parsing the config.
+    if (-not (Test-Path $rootKeyPath)) {
+        Write-Host "[-] Config doesn't exist" -ForegroundColor Red
         return $false
     }
 
     # Running the modules on each user.
     Write-Host "[*] Cleaning logs..." -ForegroundColor Blue
-    $users = New-Object Collections.Generic.List[String]
-    $runAsUser = $configFile["runAsUser"]
+    $users = $(Get-ChildItem -Path "$($rootKeyPath)\Users" | Select-Object PSChildName).PSChildName
+    $runAsUser =$(Get-ItemProperty -Path $rootKeyPath -Name "RunAsUser").RunAsUser
+    $time = $(Get-ItemProperty -Path $rootKeyPath -Name "Time").Time
+    $exclusions = $(Get-ItemProperty -Path $rootKeyPath -Name "Exclusions").Exclusions
 
-    if (!$($configFile.Contains("time"))) {
-        Write-Host "[-] Invalid config file structure." -ForegroundColor Red
-        return $false
+    # Stomping the files.
+    $filesToStomp = @{}
+
+    if (Test-Path "$($rootKeyPath)\StompedFiles") {
+        $regFilesToStomp = Get-ItemProperty "$($rootKeyPath)\StompedFiles"
+        $regFilesToStomp.PsObject.Properties | 
+            ForEach-Object {
+                $filesToStomp[$_.Name] = $_.Value
+            }
     }
-
-    Invoke-StompFiles $configFile["files"]
-
-    foreach ($user in $configFile.Keys) {
-        if ($user -eq "time" -or $user -eq "EventLogSettings" -or $user -eq "Exclusions" -or $user -eq "runAsUser" -or $user -eq "AppCompatCache") {
-            continue
-        }
-
-        $users.Add($user)
-        
-        if ($(Clear-Files $configFile["time"] $configFile[$user]["PSHistory"] $user $runAsUser $configFile["Exclusions"]) -eq $false) {
+    Invoke-StompFiles $filesToStomp
+    
+    foreach ($user in $users) {
+        $psHistory = $(Get-ItemProperty -Path "$($rootKeyPath)\Users\$($user)" -Name "PSHistory").PSHistory
+        if (-not $(Clear-Files $time $psHistory $user $runAsUser $exclusions)) {
             Write-Host "[-] Failed to clean files for $($user)." -ForegroundColor Red
             $result = $false
         }
     }
 
-    if (!$(Clear-Registry $configFile["time"] $users $runAsUser $configFile["Exclusions"] $configFile["AppCompatCache"])) {
+    if (!$(Clear-Registry $time $users $runAsUser $exclusions "$($rootKeyPath)\AppCompatCache")) {
         Write-Host "[-] Failed to cleanup the registry." -ForegroundColor Red
         $result = $false
     }
 
     # Restoring the event logging.
-    if (!$runAsUser -and -not $configFile["Exclusions"].Contains("eventlogs")) {
+    if (!$runAsUser -and -not $exclusions.Contains("eventlogs")) {
         Write-Host "[*] Restoring event logging..." -ForegroundColor Blue
 
-        if ($configFile.Contains("EventLogSettings")) {
-            if (!$(Invoke-RestoreEtw $configFile["EventLogSettings"])) {
+        if (Test-Path "$($rootKeyPath)\EventLogSettings") {
+            $etwMetadata = @{}
+            $regEventLog = Get-ItemProperty "$($rootKeyPath)\EventLogSettings"
+            $regEventLog.PsObject.Properties | 
+                ForEach-Object {
+                    $etwMetadata[$_.Name] = $_.Value
+                }
+
+            if (!$(Invoke-RestoreEtw $etwMetadata)) {
                 Write-Host "[-] Failed to restore the eventlogging." -ForegroundColor Red
                 $result = $false
             }
@@ -245,7 +260,7 @@ elseif ($operation -eq "end") {
 }
 
 elseif ($operation -eq "timestomp") {
-    if (Invoke-LogFileToStomp $stompedFilePath) {
+    if (Invoke-LogFileToStomp $rootKeyPath $stompedFilePath) {
         Write-Host "`n[+] Saved file's timestamps." -ForegroundColor Green
     }       
     else {

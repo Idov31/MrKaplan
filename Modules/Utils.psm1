@@ -39,7 +39,7 @@ function ConvertTo-Hashtable {
 }
 
 #Function written by Matt Graeber, Twitter: @mattifestation, Blog: http://www.exploit-monday.com/
-Function Get-ProcAddress
+function Get-ProcAddress
 {
     Param
     (
@@ -72,7 +72,7 @@ Function Get-ProcAddress
 }
 
 #Function written by Matt Graeber, Twitter: @mattifestation, Blog: http://www.exploit-monday.com/
-Function Get-DelegateType
+function Get-DelegateType
 {
     Param
     (

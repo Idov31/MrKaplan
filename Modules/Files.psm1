@@ -225,37 +225,41 @@ function Clear-CryptNetUrlCache {
 function Invoke-LogFileToStomp {
     param (
         [String]
-        $stompedFilePath
+        $rootKeyPath,
+
+        [String]
+        $filePath
     )
 
     # Input validation.
-    if (!$(Test-Path "MrKaplan-Config.json")) {
-        Write-Host "[-] Config file doesn't exists, for the first time run this program with start." -ForegroundColor Red
+    if (!$(Test-Path $rootKeyPath)) {
+        Write-Host "[-] Config doesn't exist, for the first time run this program with start." -ForegroundColor Red
         return $false
     }
 
     if (!$stompedFilePath) {
-        Write-Host "[-] File doesn't exists, for the first time run this program with start." -ForegroundColor Red
+        Write-Host "[-] File doesn't exist, for the first time run this program with start." -ForegroundColor Red
         return $false
     }
-
-    # Parsing the config file.
-    $configFile = Get-Content "MrKaplan-Config.json" | ConvertFrom-Json | ConvertTo-Hashtable
     
-    if (!$configFile) {
-        Write-Host "[-] Failed to parse config file." -ForegroundColor Red
-        return $false
-    }
-
-    if (!$configFile["files"]) {
-        $configFile["files"] = @{}   
+    if (-not (Test-Path "$($rootKeyPath)\StompedFiles")) {
+        New-Item "$($rootKeyPath)\StompedFiles"
     }
 
     # Saving the time stamps.
-    $stompedFileInfo = Get-Item $stompedFilePath
-    $configFile["files"][$stompedFilePath] = @($stompedFileInfo.CreationTime, $stompedFileInfo.LastWriteTime, $stompedFileInfo.LastAccessTime)
-    $configFile | ConvertTo-Json | Out-File "MrKaplan-Config.json"
+    $fileKeyPath = "$($rootKeyPath)\StompedFiles\$($filePath)"
+    
+    if (Test-Path $fileKeyPath) {
+        Write-Host "[-] File already stomped." -ForegroundColor Red
+        return $false
+    }
+    New-Item 
 
+    $stompedFileInfo = Get-Item $stompedFilePath
+
+    New-ItemProperty -Path $fileKeyPath -Name "CreationTime" -Value $stompedFileInfo.CreationTime
+    New-ItemProperty -Path $fileKeyPath -Name "LastWriteTime" -Value $stompedFileInfo.LastWriteTime
+    New-ItemProperty -Path $fileKeyPath -Name "LastAccessTime" -Value $stompedFileInfo.LastAccessTime
     return $true
 }
 
@@ -269,9 +273,9 @@ function Invoke-StompFiles {
     if ($files) {
         foreach ($file in $files.Keys) {
             $fileInfo = Get-Item $file
-            $fileInfo.CreationTime = $files[$file][0]
-            $fileInfo.LastWriteTime = $files[$file][1]
-            $fileInfo.LastAccessTime = $files[$file][2]
+            $fileInfo.CreationTime = $files[$file]["CreationTime"]
+            $fileInfo.LastWriteTime = $files[$file]["LastWriteTime"]
+            $fileInfo.LastAccessTime = $files[$file]["LastAccessTime"]
         }
     }
 }

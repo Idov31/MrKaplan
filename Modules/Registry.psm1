@@ -13,8 +13,8 @@ function Clear-Registry {
         [String[]]
         $exclusions,
 
-        [Hashtable]
-        $appCompatData
+        [String]
+        $appCompatDataPath
     )
     $result = $true
 
@@ -31,7 +31,7 @@ function Clear-Registry {
         }
 
         if (-not $exclusions.Contains("appcompatcache")) {
-            Clear-AppCompatCache $appCompatData
+            Clear-AppCompatCache $appCompatDataPath
         }
     }
 
@@ -136,15 +136,11 @@ function Clear-UserAssist {
 
 function Clear-AppCompatCache {
     param (
-        [Hashtable]
-        $appCompatData
+        [String]
+        $appCompatDataPath
     )
-
-    if (Test-Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache") {
-        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache" -Name "AppCompatCache" -Value $([System.Convert]::FromBase64String($appCompatData["AppCompatCache"])) -Force
-        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache" -Name "CacheMainSdb" -Value $([System.Convert]::FromBase64String($appCompatData["CacheMainSdb"])) -Force
-        Set-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache" -Name "SdbTime" -Value $([System.Convert]::FromBase64String($appCompatData["SdbTime"])) -Force
-    }
+    Copy-Item $appCompatDataPath -Destination "HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager\AppCompatCache" -Force
+    Write-Host "[+] Removed AppCompatCache artifacts!" -ForegroundColor Green
 }
 
 Export-ModuleMember -Function Clear-Registry
