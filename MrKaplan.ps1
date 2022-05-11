@@ -234,6 +234,7 @@ function Clear-Evidence {
     
     if ($result) {
         Write-Host "[+] Restored! Be careful with your actions now." -ForegroundColor Green
+        Remove-Item -Path $rootKeyPath -Recurse -Force
     }
     else {
         Write-Host "[!] Finished with partial restoration." -ForegroundColor Yellow
