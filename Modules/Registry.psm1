@@ -156,7 +156,7 @@ function Clear-ComDlg32 {
         $users
     )
     New-PSDrive -PSProvider Registry -Name HKU -Root HKEY_USERS
-    $comDlg32Path = "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32"
+    $comDlg32Path = "SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer"
 
     foreach ($user in $users) {
         $sid = $(New-Object System.Security.Principal.NTAccount($user)).Translate([System.Security.Principal.SecurityIdentifier]).Value
