@@ -163,7 +163,7 @@ function New-Config {
             if (!(Test-Path "HKU:\$($sid)\$($comDlg32Path)")) {
                 continue
             }
-            Copy-Item "HKU:\$($sid)\$($comDlg32Path)" -Destination "$($rootKeyPath)\Users\$($user)\ComDlg32" -Force -Recurse
+            Copy-Item "HKU:\$($sid)\$($comDlg32Path)" -Destination "$($rootKeyPath)\Users\$($user)" -Force -Recurse
         }
     }
 
