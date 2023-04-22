@@ -16,12 +16,12 @@ You can read more about it in the [wiki](https://github.com/idov31/MrKaplan/wiki
 - Can run for multiple users.
 - Can run as user and as admin (Highly recommended to run as admin).
 - Can save timestamps of files.
-- Can exclude certian operations and leave artifacts to blue teams.
+- Can exclude certain operations and leave artifacts to blue teams.
 
 ## Usage
 
-- Before you start your operations on the computer, run MrKaplan with begin flag and whenever your finish run it again with end flag.
-- ***DO NOT REMOVE MrKaplan-Config.json file until you rerun with the end flag***, otherwise MrKaplan will not be able to use the information.
+- Before you start your operations on the computer, run MrKaplan with begin flag and whenever your finish run it again with an end flag.
+- ***DO NOT REMOVE MrKaplan-Config.json file until you rerun with the end flag***, otherwise, MrKaplan will not be able to use the information.
 <img src="Pictures/usage.png" />
 
 ## IOCs
